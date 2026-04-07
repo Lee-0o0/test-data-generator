@@ -9,6 +9,14 @@ npm install
 npm run dev
 ```
 
+若报错 **`Cannot find module ... electron-vite ...`**，说明 `node_modules` 不完整（常见原因是 **`postinstall` 下载 Electron 失败** 中断了安装）。可先装全依赖再单独拉 Electron：
+
+```bash
+npm install --ignore-scripts --no-audit --no-fund
+npm run electron:install
+npm run dev
+```
+
 若提示 `Electron uninstall`，先确保本机 **7897** 端口代理已开启，再执行 `npm run electron:install` 或重新 `npm install`。
 
 ### Electron 下载很慢 / `ReadError: The server aborted pending request`

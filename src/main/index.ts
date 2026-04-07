@@ -4,13 +4,16 @@ import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpc } from './ipc'
 import { initDb } from './db'
+import { reloadSettings } from './settingsStore'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1520,
+    height: 940,
+    minWidth: 1280,
+    minHeight: 720,
     show: false,
     autoHideMenuBar: true,
     webPreferences: {
@@ -39,6 +42,7 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.testdata.generator')
   await initDb()
+  reloadSettings()
   registerIpc()
 
   app.on('browser-window-created', (_, window) => {

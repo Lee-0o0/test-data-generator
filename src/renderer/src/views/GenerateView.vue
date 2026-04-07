@@ -50,19 +50,27 @@ async function runPreview() {
   }
 }
 
-async function exportCsv() {
+type ExportKind = 'csv' | 'json' | 'mysql'
+
+async function runExport(kind: ExportKind) {
   if (modelId.value == null || !selectedModel.value) {
     ElMessage.warning('请选择模型')
     return
   }
   const c = Math.min(maxRows.value, Math.max(1, Math.floor(count.value)))
   count.value = c
-  const res = await window.tdg.export.csv({
+  const payload = {
     modelId: modelId.value,
     count: c,
     seed: seed.value.trim() || undefined,
     modelName: String(selectedModel.value.name)
-  })
+  }
+  const res =
+    kind === 'csv'
+      ? await window.tdg.export.csv(payload)
+      : kind === 'json'
+        ? await window.tdg.export.json(payload)
+        : await window.tdg.export.mysql(payload)
   if (!res.ok) {
     if (res.reason !== 'cancelled') ElMessage.warning('导出取消')
     return
@@ -96,7 +104,9 @@ async function exportCsv() {
       </el-form-item>
       <el-form-item>
         <el-button type="primary" :loading="loading" @click="runPreview">生成预览</el-button>
-        <el-button type="success" @click="exportCsv">导出 CSV</el-button>
+        <el-button type="success" @click="runExport('csv')">导出 CSV</el-button>
+        <el-button @click="runExport('json')">导出 JSON</el-button>
+        <el-button @click="runExport('mysql')">导出 MySQL SQL</el-button>
       </el-form-item>
     </el-form>
 

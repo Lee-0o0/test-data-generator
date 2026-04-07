@@ -1,5 +1,5 @@
 import { dbapi } from './db'
-import { createRandom, generateValue, type GenerateContext } from './ruleEngine'
+import { createRandom, generateValue, validateFieldRule, type GenerateContext } from './ruleEngine'
 
 export const MAX_ROWS = 1000
 
@@ -28,6 +28,13 @@ export function generateDataset(
     .all(modelId) as FieldRow[]
   if (fields.length === 0) {
     throw new Error('该模型下没有字段，请先配置字段')
+  }
+
+  for (const f of fields) {
+    const vr = validateFieldRule(String(f.field_type ?? ''), String(f.rule_expr ?? '').trim())
+    if (!vr.valid) {
+      throw new Error(`字段「${f.field_name}」：${vr.message ?? '规则无效'}`)
+    }
   }
 
   const rnd = createRandom(seed)

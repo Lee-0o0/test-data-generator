@@ -26,22 +26,39 @@ contextBridge.exposeInMainWorld('tdg', {
       }>
     }) => ipcRenderer.invoke('fields:save', payload)
   },
+  rule: {
+    preview: (ruleExpr: string, fieldKey?: string, fieldType?: string) =>
+      ipcRenderer.invoke('rule:preview', { ruleExpr, fieldKey, fieldType })
+  },
   generate: {
     preview: (payload: { modelId: number; count: number; seed?: string }) =>
       ipcRenderer.invoke('generate:preview', payload)
   },
   export: {
     csv: (payload: { modelId: number; count: number; seed?: string; modelName: string }) =>
-      ipcRenderer.invoke('export:csv', payload)
+      ipcRenderer.invoke('export:csv', payload),
+    json: (payload: { modelId: number; count: number; seed?: string; modelName: string }) =>
+      ipcRenderer.invoke('export:json', payload),
+    mysql: (payload: { modelId: number; count: number; seed?: string; modelName: string }) =>
+      ipcRenderer.invoke('export:mysql', payload)
   },
   history: {
     list: () => ipcRenderer.invoke('history:list'),
     delete: (id: number) => ipcRenderer.invoke('history:delete', id)
   },
   ai: {
-    suggestRules: (fieldNames: string[]) => ipcRenderer.invoke('ai:suggestRules', fieldNames)
+    suggestRules: (fields: Array<{ field_name: string; field_type: string }>) =>
+      ipcRenderer.invoke('ai:suggestRules', fields),
+    getLogInfo: () =>
+      ipcRenderer.invoke('ai:getLogInfo') as Promise<{ dir: string; logFile: string }>,
+    openLogFolder: () =>
+      ipcRenderer.invoke('ai:openLogFolder') as Promise<{ dir: string; error: string | null }>
   },
   app: {
     maxRows: () => ipcRenderer.invoke('app:maxRows')
+  },
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    set: (patch: Record<string, string>) => ipcRenderer.invoke('settings:set', patch)
   }
 })

@@ -40,7 +40,7 @@ function copyPath(p: string) {
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="model_name" label="模型" width="120" />
       <el-table-column prop="row_count" label="行数" width="80" />
-      <el-table-column prop="export_format" label="格式" width="80" />
+      <el-table-column prop="export_format" label="格式" width="96" />
       <el-table-column prop="duration_ms" label="耗时(ms)" width="100" />
       <el-table-column prop="created_at" label="时间" width="180" />
       <el-table-column label="文件路径" min-width="240" show-overflow-tooltip>
