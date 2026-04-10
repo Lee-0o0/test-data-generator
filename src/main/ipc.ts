@@ -7,6 +7,37 @@ import { suggestRulesForFields } from './aiService'
 import { ensureAiLogDir, getAiLogDirPath, getAiRequestsLogPath } from './aiLog'
 import { getMemorySettings, isValidSettingKey, saveSettings, type AppSettings } from './settingsStore'
 import { previewRuleSample, validateFieldRule } from './ruleEngine'
+import { mysqlColumnsToFieldPayloads, parseMysqlCreateTable } from './mysqlDdlImport'
+
+type ExportPayloadBase = {
+  modelId: number
+  count: number
+  seed?: string
+  modelName: string
+  /** 与界面预览一致时传入，导出不再重新随机生成 */
+  previewRows?: Record<string, string | number>[]
+  previewFields?: Array<{ field_name: string }>
+}
+
+function resolveExportRows(payload: ExportPayloadBase): {
+  fields: Array<{ field_name: string }>
+  rows: Record<string, string | number>[]
+  rowCount: number
+} {
+  const pr = payload.previewRows
+  const pf = payload.previewFields
+  if (
+    Array.isArray(pr) &&
+    pr.length > 0 &&
+    Array.isArray(pf) &&
+    pf.length > 0
+  ) {
+    return { fields: pf, rows: pr, rowCount: pr.length }
+  }
+  const count = Math.min(MAX_ROWS, Math.max(1, Math.floor(payload.count)))
+  const { fields, rows } = generateDataset(payload.modelId, count, payload.seed)
+  return { fields, rows, rowCount: rows.length }
+}
 
 export function registerIpc(): void {
   ipcMain.handle('models:list', () => {
@@ -23,6 +54,61 @@ export function registerIpc(): void {
       .run(payload.name, payload.description ?? null)
     return { id: info.lastInsertRowid }
   })
+
+  ipcMain.handle(
+    'models:createFromMysqlDdl',
+    (_e, payload: { ddl: string; modelName?: string }) => {
+      const parsed = parseMysqlCreateTable(payload.ddl)
+      if (!parsed.ok) return { ok: false as const, error: parsed.error }
+
+      const name = (payload.modelName ?? '').trim() || parsed.tableName
+      if (!name) return { ok: false as const, error: '模型名称不能为空' }
+
+      const dup = dbapi.prepare(`SELECT 1 AS x FROM data_model WHERE name = ?`).get(name)
+      if (dup) {
+        return {
+          ok: false as const,
+          error: `已存在同名模型「${name}」，请修改名称后重试`
+        }
+      }
+
+      const fields = mysqlColumnsToFieldPayloads(parsed.columns)
+      for (const f of fields) {
+        const vr = validateFieldRule(f.field_type, String(f.rule_expr ?? '').trim())
+        if (!vr.valid) {
+          return {
+            ok: false as const,
+            error: `字段「${f.field_name}」：${vr.message ?? '规则无效'}`
+          }
+        }
+      }
+
+      let newId: number | bigint = 0
+      dbapi.transaction(() => {
+        const info = dbapi
+          .prepare(`INSERT INTO data_model (name, description) VALUES (?, ?)`)
+          .run(name, `自 MySQL DDL 导入，原表：${parsed.tableName}`)
+        newId = info.lastInsertRowid
+        const ins = dbapi.prepare(
+          `INSERT INTO model_field (model_id, field_name, field_type, required, rule_expr, sample_value, remark, sort_order)
+           VALUES (?,?,?,?,?,?,?,?)`
+        )
+        for (const f of fields) {
+          ins.run(
+            newId,
+            f.field_name,
+            f.field_type,
+            f.required ? 1 : 0,
+            f.rule_expr,
+            f.sample_value,
+            f.remark,
+            f.sort_order
+          )
+        }
+      })
+      return { ok: true as const, id: Number(newId) }
+    }
+  )
 
   ipcMain.handle(
     'models:update',
@@ -168,10 +254,7 @@ export function registerIpc(): void {
 
   ipcMain.handle(
     'export:csv',
-    async (
-      _e,
-      payload: { modelId: number; count: number; seed?: string; modelName: string }
-    ) => {
+    async (_e, payload: ExportPayloadBase) => {
       const { filePath } = await dialog.showSaveDialog({
         title: '导出 CSV',
         defaultPath: `${payload.modelName}.csv`,
@@ -179,8 +262,7 @@ export function registerIpc(): void {
       })
       if (!filePath) return { ok: false as const, reason: 'cancelled' }
       const started = Date.now()
-      const count = Math.min(MAX_ROWS, Math.max(1, Math.floor(payload.count)))
-      const { fields, rows } = generateDataset(payload.modelId, count, payload.seed)
+      const { fields, rows, rowCount } = resolveExportRows(payload)
       exportCsv(filePath, fields, rows)
       const duration = Date.now() - started
       dbapi
@@ -191,22 +273,19 @@ export function registerIpc(): void {
         .run(
           payload.modelId,
           payload.modelName,
-          count,
+          rowCount,
           'csv',
           filePath,
           duration,
           payload.seed ?? null
         )
-      return { ok: true as const, filePath, durationMs: duration, rowCount: count }
+      return { ok: true as const, filePath, durationMs: duration, rowCount }
     }
   )
 
   ipcMain.handle(
     'export:json',
-    async (
-      _e,
-      payload: { modelId: number; count: number; seed?: string; modelName: string }
-    ) => {
+    async (_e, payload: ExportPayloadBase) => {
       const { filePath } = await dialog.showSaveDialog({
         title: '导出 JSON',
         defaultPath: `${payload.modelName}.json`,
@@ -214,8 +293,7 @@ export function registerIpc(): void {
       })
       if (!filePath) return { ok: false as const, reason: 'cancelled' }
       const started = Date.now()
-      const count = Math.min(MAX_ROWS, Math.max(1, Math.floor(payload.count)))
-      const { rows } = generateDataset(payload.modelId, count, payload.seed)
+      const { rows, rowCount } = resolveExportRows(payload)
       exportJson(filePath, rows)
       const duration = Date.now() - started
       dbapi
@@ -226,22 +304,19 @@ export function registerIpc(): void {
         .run(
           payload.modelId,
           payload.modelName,
-          count,
+          rowCount,
           'json',
           filePath,
           duration,
           payload.seed ?? null
         )
-      return { ok: true as const, filePath, durationMs: duration, rowCount: count }
+      return { ok: true as const, filePath, durationMs: duration, rowCount }
     }
   )
 
   ipcMain.handle(
     'export:mysql',
-    async (
-      _e,
-      payload: { modelId: number; count: number; seed?: string; modelName: string }
-    ) => {
+    async (_e, payload: ExportPayloadBase) => {
       const { filePath } = await dialog.showSaveDialog({
         title: '导出 MySQL SQL',
         defaultPath: `${payload.modelName}.sql`,
@@ -249,8 +324,7 @@ export function registerIpc(): void {
       })
       if (!filePath) return { ok: false as const, reason: 'cancelled' }
       const started = Date.now()
-      const count = Math.min(MAX_ROWS, Math.max(1, Math.floor(payload.count)))
-      const { fields, rows } = generateDataset(payload.modelId, count, payload.seed)
+      const { fields, rows, rowCount } = resolveExportRows(payload)
       exportMysqlSql(filePath, payload.modelName, fields, rows)
       const duration = Date.now() - started
       dbapi
@@ -261,13 +335,13 @@ export function registerIpc(): void {
         .run(
           payload.modelId,
           payload.modelName,
-          count,
+          rowCount,
           'mysql',
           filePath,
           duration,
           payload.seed ?? null
         )
-      return { ok: true as const, filePath, durationMs: duration, rowCount: count }
+      return { ok: true as const, filePath, durationMs: duration, rowCount }
     }
   )
 

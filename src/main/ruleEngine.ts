@@ -114,6 +114,9 @@ function stripEnumToken(s: string): string {
 
 const MAX_QUANTIFIER_REPEAT = 48
 
+/** string(n) / string(小,大) 允许的最大长度上界（含） */
+const MAX_STRING_RULE_LEN = 65535
+
 function readQuantifier(
   pattern: string,
   i: number
@@ -332,9 +335,25 @@ function validateSegment(seg: string): string | null {
     const args = splitTopLevelArgs(call.args)
     switch (call.name) {
       case 'string': {
+        if (args.length > 2) {
+          return '规则有误：string 仅支持 string(长度) 或 string(最小,最大)，如 string(8)、string(1,4)'
+        }
+        if (args.length >= 2) {
+          const a = parseInt(args[0] ?? '', 10)
+          const b = parseInt(args[1] ?? '', 10)
+          if (Number.isNaN(a) || Number.isNaN(b)) {
+            return '规则有误：string(最小,最大) 须为两个整数，如 string(1,4)'
+          }
+          const lo = Math.min(a, b)
+          const hi = Math.max(a, b)
+          if (lo < 1 || hi > MAX_STRING_RULE_LEN || hi < lo) {
+            return `规则有误：string(最小,最大) 须满足 1≤最小≤最大≤${MAX_STRING_RULE_LEN}，如 string(1,4)`
+          }
+          break
+        }
         const n = parseInt(args[0] ?? '', 10)
-        if (!args[0] || Number.isNaN(n) || n < 1) {
-          return '规则有误：string 须为正整数长度，如 string(8)'
+        if (!args[0] || Number.isNaN(n) || n < 1 || n > MAX_STRING_RULE_LEN) {
+          return `规则有误：string 须为 1～${MAX_STRING_RULE_LEN} 的整数长度，如 string(8)，或 string(最小,最大) 如 string(1,4)`
         }
         break
       }
@@ -491,10 +510,12 @@ export function validateTypeRuleConsistency(
       if (multi) {
         const hasString = parts.some((p) => parseRuleCall(p.trim())?.name === 'string')
         if (hasString) return { ok: true }
-        return fail('使用 + 拼接时须包含 string(长度)，例如 SKP+string(8)')
+        return fail('使用 + 拼接时须包含 string，例如 SKP+string(8) 或 SKP+string(1,4)')
       }
       if (!t.includes('(') && !t.includes(')')) return { ok: true }
-      return fail('须为 string(长度)、fixed(...)、regex(...) 或 前缀+string(长度)，或纯文本字面量')
+      return fail(
+        '须为 string(长度)、string(最小,最大)、fixed(...)、regex(...) 或 前缀+string(...)，或纯文本字面量'
+      )
     }
     default:
       return { ok: true }
@@ -595,8 +616,19 @@ function generateValueSingle(
       case 'fixed':
         return call.args
       case 'string': {
-        const len = Math.max(1, parseInt(args[0] ?? '8', 10) || 8)
         const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+        let len: number
+        if (args.length >= 2) {
+          const a = parseInt(args[0] ?? '1', 10)
+          const b = parseInt(args[1] ?? '8', 10)
+          const lo = Math.min(a, b)
+          const hi = Math.max(a, b)
+          const loC = Math.max(1, Math.min(lo, MAX_STRING_RULE_LEN))
+          const hiC = Math.max(loC, Math.min(hi, MAX_STRING_RULE_LEN))
+          len = randomInt(loC, hiC, rnd)
+        } else {
+          len = Math.max(1, Math.min(parseInt(args[0] ?? '8', 10) || 8, MAX_STRING_RULE_LEN))
+        }
         let s = ''
         for (let j = 0; j < len; j++) s += chars[randomInt(0, chars.length - 1, rnd)]!
         return s

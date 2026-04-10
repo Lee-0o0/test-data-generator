@@ -1,5 +1,4 @@
 import { writeFileSync } from 'fs'
-import type { FieldRow } from './generate'
 
 function escapeCsvCell(v: string | number): string {
   const s = String(v)
@@ -7,7 +6,11 @@ function escapeCsvCell(v: string | number): string {
   return s
 }
 
-export function exportCsv(filePath: string, fields: FieldRow[], rows: Record<string, string | number>[]): void {
+export function exportCsv(
+  filePath: string,
+  fields: Array<{ field_name: string }>,
+  rows: Record<string, string | number>[]
+): void {
   const headers = fields.map((f) => f.field_name)
   const lines = [headers.map(escapeCsvCell).join(',')]
   for (const row of rows) {

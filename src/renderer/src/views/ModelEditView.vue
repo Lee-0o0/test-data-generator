@@ -66,7 +66,7 @@ const TYPE_PRESETS: Record<string, TypePreset> = {
     rule_expr: 'SKP+string(8)',
     sample_value: 'SKPx7k2m9n3',
     remark:
-      '默认固定前缀 SKP + 随机 8 位字母数字。规则写法：前缀+string(长度)，用英文加号连接，如 ABC+string(6)；前缀内不要含 + 与未配对括号。也可单独 string(8) 不要前缀。'
+      '默认固定前缀 SKP + 随机 8 位字母数字。规则写法：string(固定长度) 如 string(8)；变长 string(最小,最大) 如 string(1,4) 表示随机 1～4 个字符。前缀用英文加号连接，如 ABC+string(6)、SKP+string(1,4)；前缀内不要含 + 与未配对括号。'
   },
   int: {
     rule_expr: 'int(1,100)',
@@ -354,7 +354,7 @@ async function aiSuggest() {
       <p class="hint-panel__title">规则语法速览</p>
       <ul class="hint-panel__list">
         <li>
-          基础：<code>fixed(abc)</code>、<code>string(8)</code>、<code>int(1,100)</code>、<code>decimal(0,100,2)</code>
+          基础：<code>fixed(abc)</code>、<code>string(8)</code>、<code>string(1,4)</code>（变长）、<code>int(1,100)</code>、<code>decimal(0,100,2)</code>
         </li>
         <li>
           关键字：<code>name</code>、<code>phone</code>、<code>email</code>、<code>address</code>、<code>uuid</code>、<code>increment</code>、<code>timestamp</code>
@@ -362,7 +362,10 @@ async function aiSuggest() {
         <li>
           日期时间：<code>date(2020,2025)</code>、<code>datetime(2020,2025)</code>；枚举：<code>enum(A,B,C)</code>；正则：<code>regex(\d{6})</code>
         </li>
-        <li>文本前缀拼接：<code>SKP+string(8)</code>（加号连接，须含 <code>string(长度)</code>）</li>
+        <li>
+          文本前缀拼接：<code>SKP+string(8)</code> 或 <code>SKP+string(1,4)</code>（加号连接，须含
+          <code>string</code> 调用）
+        </li>
       </ul>
       <p class="hint-panel__foot">
         切换「类型」会同步默认规则、示例与备注；生成规则须与类型一致（不一致会标红提示）。修改规则后按回车或失焦刷新示例；name / phone 等关键字类型下规则不可编辑。

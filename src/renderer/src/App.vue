@@ -7,7 +7,7 @@ import { RouterView } from 'vue-router'
     <div class="layout">
       <el-container>
         <el-aside width="228px" class="aside">
-          <div class="brand">Test Data Gen</div>
+          <div class="brand">Test Data Generator</div>
           <el-menu router :default-active="$route.path" class="menu">
             <el-menu-item index="/models">数据模型</el-menu-item>
             <el-menu-item index="/generate">生成与导出</el-menu-item>

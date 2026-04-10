@@ -52,6 +52,11 @@ async function runPreview() {
 
 type ExportKind = 'csv' | 'json' | 'mysql'
 
+/** IPC 结构化克隆不能传 Vue 的 Proxy，需转成纯 JSON 数据 */
+function plainForIpc<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v)) as T
+}
+
 async function runExport(kind: ExportKind) {
   if (modelId.value == null || !selectedModel.value) {
     ElMessage.warning('请选择模型')
@@ -59,23 +64,36 @@ async function runExport(kind: ExportKind) {
   }
   const c = Math.min(maxRows.value, Math.max(1, Math.floor(count.value)))
   count.value = c
+  const hasPreview =
+    previewRows.value.length > 0 && previewFields.value.length > 0
   const payload = {
     modelId: modelId.value,
     count: c,
     seed: seed.value.trim() || undefined,
-    modelName: String(selectedModel.value.name)
+    modelName: String(selectedModel.value.name),
+    ...(hasPreview
+      ? {
+          previewRows: plainForIpc(previewRows.value),
+          previewFields: plainForIpc(previewFields.value)
+        }
+      : {})
   }
-  const res =
-    kind === 'csv'
-      ? await window.tdg.export.csv(payload)
-      : kind === 'json'
-        ? await window.tdg.export.json(payload)
-        : await window.tdg.export.mysql(payload)
-  if (!res.ok) {
-    if (res.reason !== 'cancelled') ElMessage.warning('导出取消')
-    return
+  try {
+    const res =
+      kind === 'csv'
+        ? await window.tdg.export.csv(payload)
+        : kind === 'json'
+          ? await window.tdg.export.json(payload)
+          : await window.tdg.export.mysql(payload)
+    if (!res.ok) {
+      if (res.reason !== 'cancelled') ElMessage.warning('导出取消')
+      return
+    }
+    ElMessage.success(`已导出 ${res.rowCount} 行，耗时 ${res.durationMs} ms`)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    ElMessage.error(msg || '导出失败')
   }
-  ElMessage.success(`已导出 ${res.rowCount} 行，耗时 ${res.durationMs} ms`)
 }
 </script>
 
@@ -107,6 +125,7 @@ async function runExport(kind: ExportKind) {
         <el-button type="success" @click="runExport('csv')">导出 CSV</el-button>
         <el-button @click="runExport('json')">导出 JSON</el-button>
         <el-button @click="runExport('mysql')">导出 MySQL SQL</el-button>
+        <span class="tip">有预览时导出与表格一致；未预览时按上方数量与种子重新随机生成</span>
       </el-form-item>
     </el-form>
 

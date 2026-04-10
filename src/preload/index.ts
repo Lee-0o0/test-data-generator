@@ -1,11 +1,22 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+type ExportPayload = {
+  modelId: number
+  count: number
+  seed?: string
+  modelName: string
+  previewRows?: Record<string, string | number>[]
+  previewFields?: Array<{ field_name: string }>
+}
+
 contextBridge.exposeInMainWorld('tdg', {
   models: {
     list: () => ipcRenderer.invoke('models:list'),
     get: (id: number) => ipcRenderer.invoke('models:get', id),
     create: (payload: { name: string; description?: string }) =>
       ipcRenderer.invoke('models:create', payload),
+    createFromMysqlDdl: (payload: { ddl: string; modelName?: string }) =>
+      ipcRenderer.invoke('models:createFromMysqlDdl', payload),
     update: (payload: { id: number; name: string; description?: string }) =>
       ipcRenderer.invoke('models:update', payload),
     delete: (id: number) => ipcRenderer.invoke('models:delete', id),
@@ -35,12 +46,9 @@ contextBridge.exposeInMainWorld('tdg', {
       ipcRenderer.invoke('generate:preview', payload)
   },
   export: {
-    csv: (payload: { modelId: number; count: number; seed?: string; modelName: string }) =>
-      ipcRenderer.invoke('export:csv', payload),
-    json: (payload: { modelId: number; count: number; seed?: string; modelName: string }) =>
-      ipcRenderer.invoke('export:json', payload),
-    mysql: (payload: { modelId: number; count: number; seed?: string; modelName: string }) =>
-      ipcRenderer.invoke('export:mysql', payload)
+    csv: (payload: ExportPayload) => ipcRenderer.invoke('export:csv', payload),
+    json: (payload: ExportPayload) => ipcRenderer.invoke('export:json', payload),
+    mysql: (payload: ExportPayload) => ipcRenderer.invoke('export:mysql', payload)
   },
   history: {
     list: () => ipcRenderer.invoke('history:list'),

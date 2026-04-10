@@ -1,5 +1,4 @@
 import { writeFileSync } from 'fs'
-import type { FieldRow } from './generate'
 
 /** 导出为 JSON 数组（每行一条对象） */
 export function exportJson(filePath: string, rows: Record<string, string | number>[]): void {
@@ -41,7 +40,7 @@ function sanitizeMysqlTableName(modelName: string): string {
 export function exportMysqlSql(
   filePath: string,
   tableBaseName: string,
-  fields: FieldRow[],
+  fields: Array<{ field_name: string }>,
   rows: Record<string, string | number>[]
 ): void {
   const table = escapeMysqlIdent(sanitizeMysqlTableName(tableBaseName))

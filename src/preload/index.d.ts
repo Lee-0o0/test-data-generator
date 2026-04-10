@@ -7,6 +7,10 @@ declare global {
         list: () => Promise<unknown[]>
         get: (id: number) => Promise<Record<string, unknown> | undefined>
         create: (payload: { name: string; description?: string }) => Promise<{ id: number }>
+        createFromMysqlDdl: (payload: {
+          ddl: string
+          modelName?: string
+        }) => Promise<{ ok: true; id: number } | { ok: false; error: string }>
         update: (payload: { id: number; name: string; description?: string }) => Promise<void>
         delete: (id: number) => Promise<void>
         copy: (id: number) => Promise<{ id: number }>
@@ -46,6 +50,8 @@ declare global {
           count: number
           seed?: string
           modelName: string
+          previewRows?: Record<string, string | number>[]
+          previewFields?: Array<{ field_name: string }>
         }) => Promise<
           | { ok: true; filePath: string; durationMs: number; rowCount: number }
           | { ok: false; reason: string }
@@ -55,6 +61,8 @@ declare global {
           count: number
           seed?: string
           modelName: string
+          previewRows?: Record<string, string | number>[]
+          previewFields?: Array<{ field_name: string }>
         }) => Promise<
           | { ok: true; filePath: string; durationMs: number; rowCount: number }
           | { ok: false; reason: string }
@@ -64,6 +72,8 @@ declare global {
           count: number
           seed?: string
           modelName: string
+          previewRows?: Record<string, string | number>[]
+          previewFields?: Array<{ field_name: string }>
         }) => Promise<
           | { ok: true; filePath: string; durationMs: number; rowCount: number }
           | { ok: false; reason: string }
