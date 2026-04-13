@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { dirname, join } from 'path'
 import { app } from 'electron'
 import initSqlJs, { type Database as SqlJsDatabase, type SqlValue } from 'sql.js'
+import { getAppDataDir } from './appDataDir'
 
 let sqlDb: SqlJsDatabase | null = null
 let filePath = ''
@@ -23,8 +24,8 @@ function persist(): void {
 }
 
 export async function initDb(): Promise<void> {
-  const userDir = app.getPath('userData')
-  filePath = join(userDir, 'test-data-generator.db')
+  const dataDir = getAppDataDir()
+  filePath = join(dataDir, 'test-data-generator.db')
 
   const SQL = await initSqlJs({ locateFile: wasmLocate })
 

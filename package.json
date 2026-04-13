@@ -10,6 +10,7 @@
     "preview": "node ./node_modules/electron-vite/bin/electron-vite.js preview",
     "rebuild:native": "echo \"使用 sql.js，无需原生编译\"",
     "electron:install": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 node ./node_modules/electron/install.js",
+    "electron:dist": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/ HTTP_PROXY=http://127.0.0.1:7897 HTTPS_PROXY=http://127.0.0.1:7897 electron-builder",
     "postinstall": "npm run electron:install"
   },
   "dependencies": {
@@ -35,6 +36,7 @@
   "build": {
     "appId": "com.testdata.generator",
     "productName": "Test Data Generator",
+    "electronDist": "node_modules/electron/dist",
     "directories": {
       "output": "release"
     },
@@ -48,7 +50,8 @@
       }
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "signAndEditExecutable": false
     }
   }
 }

@@ -69,4 +69,5 @@ npx electron-builder
 
 ## 数据文件
 
-SQLite 数据库位于各系统 Electron `userData` 目录下的 `test-data-generator.db`。
+- **打包运行**：与主程序 `exe` 同级的 `data` 目录（含 `test-data-generator.db`、`ai-logs` 等）。
+- **开发运行**：项目根目录下的 `data`（已加入 `.gitignore`）。

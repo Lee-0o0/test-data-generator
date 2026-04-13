@@ -1,10 +1,10 @@
-import { app } from 'electron'
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
+import { getAppDataDir } from './appDataDir'
 
-/** 与数据库同级的用户数据目录下 ai-logs（可写；安装目录通常不可写） */
+/** 与数据库同级：`data/ai-logs` */
 export function getAiLogDirPath(): string {
-  return join(app.getPath('userData'), 'ai-logs')
+  return join(getAppDataDir(), 'ai-logs')
 }
 
 export function getAiRequestsLogPath(): string {
